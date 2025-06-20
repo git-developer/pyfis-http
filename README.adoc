@@ -1,0 +1,41 @@
+= pyfis-http
+:toc:
+:toc-placement!:
+
+A minimal HTTP adapter exposing an IBIS (VDV 300) serial device using https://github.com/CatoLynx/pyFIS[pyFIS]
+
+toc::[]
+
+== Prerequisites
+* Docker Compose (Installation on Debian-based systems: `sudo apt-get install docker-compose-v2`)
+
+== Usage
+. Create a `compose.yml` containing the path to a serial device. Example: link:compose.yml[]
+
+. Start the server:
++
+[source,console]
+----
+$ docker compose up -d
+----
+
+. Send HTTP requests:
++
+[source,console]
+----
+$ curl 'http://localhost:8300/ibis?telegram=DS001&text=123'
+{"request": {"telegram": "DS001", "text": "123"}, "response": null}
+$ curl 'http://localhost:8300/ibis?telegram=DS009&text=Akazienallee'
+{"request": {"telegram": "DS009", "text": "Akazienallee"}, "response": null}
+$ curl 'http://localhost:8300/ibis?telegram=DS003a&text=Hauptbahnhof'
+{"request": {"telegram": "DS003a", "text": "Hauptbahnhof"}, "response": null}
+$ curl 'http://localhost:8300/ibis?telegram=DS020&text=1'
+{"request": {"telegram": "DS020", "text": "1"}, "response": null}
+----
+
+. Stop the server:
++
+[source,console]
+----
+$ docker compose down
+----

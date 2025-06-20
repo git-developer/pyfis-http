@@ -1,0 +1,18 @@
+---
+services:
+  pyfis-http:
+    image: ghcr.io/git-developer/pyfis-http
+    container_name: pyfis-http
+    init: true
+    mem_limit: 16m
+    restart: unless-stopped
+    user: "1000:1000" # drop root privileges
+    ports:
+      - "8300:8080" # expose the server on host port 8300
+    devices:
+      - "/dev/ttyUSB0:/dev/ttyS0" # configure '/dev/ttyUSB0' as serial device
+    group_add:
+      - dialout # Permit access to the serial device
+    #tty: true # 'tty' enables debug messages of the serial device (if debugging is enabled)
+    #environment:
+    #  PYFIS_DEBUG: 1

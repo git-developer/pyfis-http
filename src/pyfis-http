@@ -1,0 +1,62 @@
+#!/usr/bin/python3
+
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from pyfis.ibis import SerialIBISMaster
+from urllib.parse import urlparse, parse_qs
+import json
+import logging
+import os
+import time
+
+http_host     = os.getenv('PYFIS_HTTP_HOSTNAME', '0.0.0.0')
+http_port     = os.getenv('PYFIS_HTTP_PORT', 8080)
+serial_device = os.getenv('PYFIS_SERIAL_DEVICE', '/dev/ttyS0')
+debug         = os.getenv('PYFIS_DEBUG', '0') == '1'
+
+class PyFISHandler(BaseHTTPRequestHandler):
+
+    ibis_master = SerialIBISMaster(serial_device, debug=debug)
+
+    def do_GET(self):
+        ibis = { 'request': {} }
+        response = { 'code': 200, 'content': ibis }
+
+        query_parameters = parse_qs(urlparse(self.path).query)
+        try:
+            for key in ('telegram', 'text'):
+                ibis['request'][key] = query_parameters[key][0]
+
+            telegram = getattr(self.ibis_master, ibis['request']['telegram'])
+            ibis['response'] = telegram(ibis['request']['text'])
+        except KeyError as e:
+            response['code'] = 400
+            ibis['error'] = 'Missing required parameter: {}'.format(e)
+        except AttributeError as e:
+            response['code'] = 400
+            ibis['error'] = 'Unsupported telegram: {}'.format(e)
+        except Exception as e:
+            response['code'] = 400
+            ibis['error'] = '{}: {}'.format(type(e).__name__, e)
+
+        self.send_response(response['code'])
+        self.send_header('Content-Type', 'application/json')
+        self.end_headers()
+        self.wfile.write(bytes(json.dumps(response['content']), 'utf-8'))
+
+if __name__ == '__main__':
+    logger = logging.getLogger('pyfis-http')
+    logging.basicConfig(level=(logging.DEBUG if debug else logging.INFO))
+    logger.info('Server starting')
+    if (debug):
+        logger.debug('Debug: %s' % debug)
+
+    http_server = HTTPServer((http_host, http_port), PyFISHandler)
+    logger.info('Serving %s at http://%s:%s' % (serial_device, http_host, http_port))
+
+    try:
+        http_server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+
+    http_server.server_close()
+    logger.info('Server stopped.')
